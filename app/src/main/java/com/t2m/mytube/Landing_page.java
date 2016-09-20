@@ -173,13 +173,13 @@ public class Landing_page extends AppCompatActivity
 
                     // Storing each json item in variable
                     String title = c.getString("title");
-                    String link = c.getString("img_url");
-                    String ctype = c.getString("param");
+                    String img_url = c.getString("img_url");
+                    String param = c.getString("param");
 
                     // show the values in our logcat
                     Log.e(TAG, "title: " + title
-                            + ", link: " + link
-                            + ", ctype: " + ctype);
+                            + ", img_url: " + img_url
+                            + ", param: " + param);
 
 
 
