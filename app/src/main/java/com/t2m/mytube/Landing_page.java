@@ -1,5 +1,7 @@
 package com.t2m.mytube;
 
+import android.app.ProgressDialog;
+import android.net.ParseException;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -16,6 +18,12 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -24,12 +32,29 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
 import android.util.Log;
+import android.widget.AdapterView;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import java.io.IOException;
+import java.util.ArrayList;
 
 
 public class Landing_page extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
     ViewPager viewPager;
+    ImageView Banner;
+
+    ArrayList<Actors> actorsList;
+
+    ActorAdapter adapter;
+
+
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,10 +62,32 @@ public class Landing_page extends AppCompatActivity
         setContentView(R.layout.activity_landing_page);
 
 
+
+
         //////  AsyncTaskParseJson called/////
 
 
-        new AsyncTaskParseJson().execute();
+        actorsList = new ArrayList<Actors>();
+        new JSONAsyncTask().execute("http://wapzone.mobi/api/seeall.php?ctype=music");
+
+        ListView listview = (ListView)findViewById(R.id.list);
+        adapter = new ActorAdapter(getApplicationContext(), R.layout.row, actorsList);
+
+        listview.setAdapter(adapter);
+
+        listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+            @Override
+            public void onItemClick(AdapterView<?> arg0, View arg1, int position,
+                                    long id) {
+                // TODO Auto-generated method stub
+                Toast.makeText(getApplicationContext(), actorsList.get(position).getName(), Toast.LENGTH_LONG).show();
+            }
+        });
+
+
+             /////////    //////  AsyncTaskParseJson called/////
+
 
 
         //// pager//
@@ -49,9 +96,6 @@ public class Landing_page extends AppCompatActivity
         viewPager.setAdapter(adapter);
 
         ///// end ///
-
-
-
 
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -68,7 +112,7 @@ public class Landing_page extends AppCompatActivity
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-            this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.setDrawerListener(toggle);
         toggle.syncState();
 
@@ -136,66 +180,85 @@ public class Landing_page extends AppCompatActivity
 
     //////// AsyncTaskParseJson//////
 
-    public class AsyncTaskParseJson extends AsyncTask<String, String, String> {
+    class JSONAsyncTask extends AsyncTask<String, Void, Boolean> {
 
-        final String TAG = "AsyncTaskParseJson.java";
-
-        // set your json string url here
-        String yourJsonStringUrl = "http://wapzone.mobi/api/seeall.php?ctype=music";
-
-        // contacts JSONArray
-        JSONArray dataJsonArr = null;
+        ProgressDialog dialog;
 
         @Override
-        protected void onPreExecute() {}
-
-        @Override
-        protected String doInBackground(String... arg0) {
-
-            try {
-
-                // instantiate our json parser
-                JsonParser jParser = new JsonParser();
-
-                // get json string from url
-                JSONObject json = jParser.getJSONFromUrl(yourJsonStringUrl);
-
-                // get the array of users
-
-                dataJsonArr = json.getJSONArray("banners");
-
-
-
-                // loop through all users
-                for (int i = 0; i < dataJsonArr.length(); i++) {
-
-                    JSONObject c = dataJsonArr.getJSONObject(i);
-
-                    // Storing each json item in variable
-                    String title = c.getString("title");
-                    String img_url = c.getString("img_url");
-                    String param = c.getString("param");
-
-                    // show the values in our logcat
-                    Log.e(TAG, "title: " + title
-                            + ", img_url: " + img_url
-                            + ", param: " + param);
-
-
-
-
-                }
-
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-
-            return null;
+        protected void onPreExecute() {
+            super.onPreExecute();
+            dialog = new ProgressDialog(Landing_page.this);
+            dialog.setMessage("Loading, please wait");
+            dialog.setTitle("Connecting server");
+            dialog.show();
+            dialog.setCancelable(false);
         }
 
         @Override
-        protected void onPostExecute(String strFromDoInBg) {}
+        protected Boolean doInBackground(String... urls) {
+            try {
+
+                //------------------>>
+                HttpGet httppost = new HttpGet(urls[0]);
+                HttpClient httpclient = new DefaultHttpClient();
+                HttpResponse response = httpclient.execute(httppost);
+
+                // StatusLine stat = response.getStatusLine();
+                int status = response.getStatusLine().getStatusCode();
+
+                if (status == 200) {
+                    HttpEntity entity = response.getEntity();
+                    String data = EntityUtils.toString(entity);
+
+
+                    JSONObject jsono = new JSONObject(data);
+                    JSONArray jarray = jsono.getJSONArray("banners");
+
+                    for (int i = 0; i < jarray.length(); i++) {
+                        JSONObject object = jarray.getJSONObject(i);
+
+
+
+
+                        Actors actor = new Actors();
+
+                        actor.setName(object.getString("title"));
+                        //actor.setDescription(object.getString("link"));
+                        //actor.setDob(object.getString("title"));
+                        //actor.setCountry(object.getString("link"));
+                        //actor.setHeight(object.getString("link"));
+                        //actor.setSpouse(object.getString("link"));
+                        //actor.setChildren(object.getString("title"));
+                        actor.setImage(object.getString("img_url"));
+
+                        actorsList.add(actor);
+                    }
+                    return true;
+                }
+
+                //------------------>>
+
+            } catch (ParseException e1) {
+                e1.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
+
+        protected void onPostExecute(Boolean result) {
+            dialog.cancel();
+            adapter.notifyDataSetChanged();
+            if(result == false)
+                Toast.makeText(getApplicationContext(), "Unable to fetch data from server", Toast.LENGTH_LONG).show();
+
+        }
     }
+
+
+
 
     //////// AsyncTaskParseJson end//////
 
