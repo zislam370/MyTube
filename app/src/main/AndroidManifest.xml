@@ -2,8 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.t2m.mytube" >
 
-
-
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
